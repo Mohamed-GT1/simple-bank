@@ -556,8 +556,8 @@ void GoToTransactionsMenu(vector<Client> &clients) {
 		choice = (TransactionMenu)MyLib::ReadNumberInRange("enter which transaction option you want to perfrom? 1-4", 1, 4);
 		system("cls");
 		switch (choice) {
-		case TransactionMenu::Deposit :
-			DepositAccount(clients);
+		case TransactionMenu::Deposit : //could replace this part with a separate function called perfromtransactionmenu
+			DepositAccount(clients);	//like how i did it for the main menu 
 			break;
 		case TransactionMenu::Withdraw :
 			WithdrawAccount(clients);
