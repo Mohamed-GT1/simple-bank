@@ -4,10 +4,12 @@
 #include<vector>
 #include<iomanip>
 #include"MyLib.h"
+#include "Source.h"
 
 using namespace std;
 
-const string FILENAME = "clientData.txt";
+const string FILENAMECLIENTS = "clientData.txt";
+const string FILENAMEUSERS = "users.txt";
 const string DELIM = "#//#";
 struct Client {
 	string accountNumber;
@@ -26,7 +28,8 @@ enum MenuChoice {
 	eUpdateClient = 4,
 	eFindClient = 5,
 	eTransactions =6,
-	eExit = 7
+	eManageUsers = 7,
+	eLogout = 8
 
 };
 
@@ -38,9 +41,44 @@ enum TransactionMenu {
 
 };
 
-void PrintClientCard(Client client);
-void SaveUpdatedClientsToFile(vector<Client> clients);
+enum ManageUsersMenu {
+	eListUsers =1,
+	eAddUser =2,
+	eDeleteUser =3,
+	eUpdateUser =4,
+	eFindUser=5,
+	eMainMenu =6
+
+
+
+};
+
+enum PermissionOptions {
+	eToShowAllClient = 1,
+	eToAddClient = 2,
+	eToDeleteClient = 4,
+	eToUpdateClient = 8,
+	eToFindClient = 16,
+	eToTransactions = 32,
+	eToManageUsers = 64,
+
+	eAllPermissions =-1
+};
+
+struct User {
+	string username;
+	string password;
+	int permissionGranted=0;
+	bool markForDelete = false;
+};
+
+void PrintClientCard(const Client& client);
+void SaveUpdatedClientsToFile(const vector<Client> &clients);
 vector <Client> LoadClientsFromFile(string fileName);
+bool FindUser(const vector<User>& users, string userName, User& user);
+void PrintUserCard(const User& user);
+void SaveUpdatedUsersToFile(const vector<User>& users);
+vector<User> LoadUsersFromFile(string fileName);
 
 
 string ConvertClientToRecordString(Client client) {
@@ -57,9 +95,21 @@ string ConvertClientToRecordString(Client client) {
 
 
 }
+string ConvertUserToRecordString(User user) {
+
+	string recordString = "";
+
+	recordString += user.username + DELIM
+		+ user.password + DELIM
+		+ to_string(user.permissionGranted);
+
+	return recordString;
+
+
+}
 bool CheckClientExist(string accountNumber) {
 
-	vector<Client> clients = LoadClientsFromFile(FILENAME);
+	vector<Client> clients = LoadClientsFromFile(FILENAMECLIENTS);
 	for (const Client& c : clients) {
 		if (c.accountNumber == accountNumber)
 		{
@@ -123,6 +173,25 @@ void SaveClientToFile(Client client, string fileName) {
 
 }
 
+void SaveUserToFile(User user,string fileName) {
+	fstream myfile;
+	myfile.open(fileName, ios::out | ios::app);
+
+	string recordString = ConvertUserToRecordString(user);
+
+	if (myfile.is_open()) {
+
+		myfile << recordString << endl;
+		cout << "added successfully\n";
+		myfile.close();
+
+
+	}
+
+
+
+}
+
 vector<string> SplitString(string text, string delim) {
 	int pos;
 	string word;
@@ -160,6 +229,22 @@ Client ConvertRecordStringToClient(string text ) {
 
 
 }
+User ConvertRecordStringToUser(string text ) {
+
+	User user;
+
+	vector<string> data = SplitString(text, DELIM);
+
+	user.username = data[0];
+	user.password = data[1];
+	user.permissionGranted = stoi(data[2]);
+	
+
+	return user;
+
+
+
+}
 
 
 
@@ -172,7 +257,7 @@ void AddClients(vector<Client> &clients) {
 		system("cls");
 
 		client = ReadClientData();
-		SaveClientToFile(client,FILENAME);
+		SaveClientToFile(client,FILENAMECLIENTS);
 
 		clients.push_back(client);
 		
@@ -182,7 +267,112 @@ void AddClients(vector<Client> &clients) {
 	} while (tolower(answer) == 'y');
 
 	cout << "press any key to go back to main menu screen...";
-	system("pause>0");
+	system("pause>nul");
+
+
+}
+bool CheckUserExists(string userName,const vector<User>& users) {
+
+	
+	for (const User &user : users) {
+		if (user.username == userName)
+		{
+			cout << "usernmae already exists for a user \n";
+			return true;
+
+		}
+	}
+	return false;
+
+
+}
+
+int ReadUserPermissions() {
+	char answer;
+	int permissionGranted = 0;
+
+	cout << "\ndo you want to give the user all permissions ? [y] [n] ";
+	cin >> answer;
+	if (tolower(answer) == 'y') {
+		permissionGranted = PermissionOptions::eAllPermissions;
+	}
+	else {
+		cout << "\ndo you want to give show all clients permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToShowAllClient;
+
+		cout << "\ndo you want to give add clients permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToAddClient;
+
+		cout << "\ndo you want to give delelte clients permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToDeleteClient;
+
+		cout << "\ndo you want to give update clients permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToUpdateClient;
+
+		cout << "\ndo you want to give find clients permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToFindClient;
+
+		cout << "\ndo you want to give manage transactions of clients permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToTransactions;
+
+		cout << "\ndo you want to give manage users permission ? [y] [n] ";
+		cin >> answer;
+		if (tolower(answer) == 'y')
+			permissionGranted |= PermissionOptions::eToManageUsers;
+
+		
+
+	}
+	return permissionGranted;
+}
+
+User ReadUserData(const vector<User> & users) {
+	char answer = 'n';
+	
+	User user; do {
+		cout << "\nenter username : ";
+		getline(cin >> ws, user.username);
+	} while (CheckUserExists(user.username, users));
+
+	cout << "\nenter password : ";
+	getline(cin,user.password);
+
+	user.permissionGranted = ReadUserPermissions();
+
+	return user;
+	
+
+}
+
+void AddUsers(vector<User> &users) {
+
+	char answer = 'n';
+	User user;
+
+	do {
+		user = ReadUserData(users);
+		SaveUserToFile(user, FILENAMEUSERS);
+		users = LoadUsersFromFile(FILENAMEUSERS);
+
+		cout << "do you want to add more users ? [y] [n] ";
+		cin >> answer;
+		
+
+	} while (tolower(answer) == 'y');
+
+
 
 
 }
@@ -214,7 +404,35 @@ vector <Client> LoadClientsFromFile(string fileName) {
 
 }
 
-void PrintClient(Client client) {
+
+
+vector<User> LoadUsersFromFile(string fileName) {
+
+	vector<User> users;
+	User user;
+	fstream myfile;
+	myfile.open(fileName, ios::in);
+	string line;
+
+	if (myfile.is_open()) {
+
+		while (getline(myfile, line)) {
+
+			if (line != "") {
+				user = ConvertRecordStringToUser(line);
+				users.push_back(user);
+			}
+		}
+
+		myfile.close();
+
+	}
+
+	return users;
+
+}
+
+void PrintClient(const Client & client) {
 
 	cout << left << setw(15) << client.accountNumber << setw(2) << "|" << setw(8) << client.pincode << setw(2) << "|"
 		<< setw(20) << client.name << setw(2) << "|" << setw(20) << client.phoneNumber << setw(2) << "|"
@@ -244,11 +462,11 @@ void ShowAllClients(const vector<Client> & clients) {
 	cout << "---------------------------------------------------------------------------------------\n";
 
 	cout << "press any key to go back to main menu screen...";
-	system("pause>0");
+	system("pause>nul");
 
 }
 
-void PrintClientCard(Client client) {
+void PrintClientCard(const Client& client) {
 	cout << "---------------------------------------\n";
 	cout << left << setw(15) << "account number" << " : " << client.accountNumber << endl
 		<< setw(15) << "pincode" << " : " << client.pincode << endl
@@ -287,7 +505,7 @@ void FindAndPrintClient(const vector<Client> &clients) {
 	}
 
 	cout << "press any key to go back to main menu screen...";
-	system("pause>0");
+	system("pause>nul");
 
 }
 
@@ -308,7 +526,7 @@ void DeleteClient(vector<Client>& clients) {
 				{
 					c.markForDelete = true;
 					SaveUpdatedClientsToFile(clients);
-					clients = LoadClientsFromFile(FILENAME);
+					clients = LoadClientsFromFile(FILENAMECLIENTS);
 					break;
 				}
 			}
@@ -326,7 +544,7 @@ void DeleteClient(vector<Client>& clients) {
 	}
 
 	cout << "press any key to return to main menu...";
-	system("pause>0");
+	system("pause>nul");
 
 
 }
@@ -379,19 +597,19 @@ void UpdateClient(vector<Client> &clients) {
 	}
 
 	cout << "enter anykey to go back to main menu ";
-	system("pause>0");
+	system("pause>nul");
 
 
 }
 
-void SaveUpdatedClientsToFile(vector<Client> clients) {
+void SaveUpdatedClientsToFile(const vector<Client> &clients) {
 	fstream myfile;
 	string recordString;
-	myfile.open(FILENAME, ios::out);
+	myfile.open(FILENAMECLIENTS, ios::out);
 
 	if (myfile.is_open())
 	{
-		for (Client client : clients) {
+		for (const Client &client : clients) {
 
 			if (client.markForDelete == false)
 			{
@@ -420,7 +638,8 @@ void ShowMainMenu() {
 	cout << "\t" << "[4] Update client.\n";
 	cout << "\t" << "[5] Find client.\n";
 	cout << "\t" << "[6] Transactions.\n";
-	cout << "\t" << "[7] Exit.\n";
+	cout << "\t" << "[7] Manage Users.\n";
+	cout << "\t" << "[8] Logout.\n";
 	cout << "=======================================\n";
 
 
@@ -518,7 +737,7 @@ void WithdrawAccount(vector<Client>& clients) {
 	system("pause > nul");
 
 }
-void ShowTotalBalances(vector<Client> &clients) {
+void ShowTotalBalances(const vector<Client> &clients) {
 	cout << "				list of (" << clients.size() << ") clients\n";
 	cout << "-------------------------------------------------------\n";
 	cout << left << setw(15) << "account number" << setw(2) << "|"
@@ -575,30 +794,315 @@ void GoToTransactionsMenu(vector<Client> &clients) {
 
 }
 
-void PerformMainMenuOption(MenuChoice menuChoice ,vector<Client> &clients) {
+void ChangeUserData(User& user) {
+
+	
+	char answer;
+	cout << "\nenter password : ";
+	getline(cin >> ws, user.password);
+	user.permissionGranted = ReadUserPermissions();
+
+	
+
+
+}
+void UpdateUser(vector<User>& users) {
+
+	string userName = MyLib::ReadString("enter username to update ");
+
+
+	User user;
+	char answer;
+
+	if (FindUser(users, userName, user)) {
+		PrintUserCard(user);
+		cout << "are you sure you want to update this client ? [y] [n]  ";
+		cin >> answer;
+		if (tolower(answer) == 'y') {
+			for (User & u : users) {
+				if (u.username == userName) {
+					ChangeUserData(u);
+					SaveUpdatedUsersToFile(users);
+					break;
+				}
+			}
+
+		}
+		else {
+			cout << "user not updated \n";
+		}
+
+
+	}
+	else {
+		cout << "user not found ";
+	}
+
+	cout << "enter any key to go back to main menu ";
+	system("pause>nul");
+
+}
+
+void FindAndPrintUser(const vector<User> & users) {
+
+	string userName = MyLib::ReadString("enter user name to find");
+	User user;
+	if (FindUser( users, userName,user)) {
+		PrintUserCard(user);
+	}
+	else {
+		cout << "\nuser not found\n";
+
+	}
+
+	cout << "press any key to go back to main menu screen...";
+	system("pause>nul");
+
+}
+
+void ShowManageUsersMenu() {
+
+	cout << "=======================================\n";
+	cout << "\tManager Users Menu \n";
+	cout << "=======================================\n";
+	cout << "\t" << "[1] Show all Users.\n";
+	cout << "\t" << "[2] Add user.\n";
+	cout << "\t" << "[3] Delete user.\n";
+	cout << "\t" << "[4] Update User.\n";
+	cout << "\t" << "[5] Find User.\n";
+	cout << "\t" << "[6] main menu.\n";
+	cout << "=======================================\n";
+
+
+
+}
+bool FindUser(const vector<User> & users,string userName, User& user) {
+	for (User u : users) {
+		if (u.username == userName)
+		{
+			user = u;
+			return true;
+		}
+	}
+	return false;
+
+
+}
+
+void SaveUpdatedUsersToFile(const vector<User> &users) {
+
+	fstream myfile;
+	string recordString;
+	myfile.open(FILENAMEUSERS, ios::out);
+
+	if (myfile.is_open())
+	{
+		for (User user : users) {
+
+			if (user.markForDelete == false)
+			{
+				recordString = ConvertUserToRecordString(user);
+				myfile << recordString << endl;
+			}
+
+		}
+		myfile.close();
+		cout << "\nfile updated\n";
+	}
+
+
+
+}
+void DeleteUser(vector<User> & users) {
+	string userName;
+	
+	do 
+	{
+		userName= MyLib::ReadString("enter user name to delete ");
+		if(userName == "Admin")
+		cout << "cannot delete this account \n";
+
+	} while (userName == "Admin");
+
+	char answer;
+	User user;
+	if (FindUser(users, userName, user)) {
+		PrintUserCard(user);
+		cout << "are you sure you want to delete the account ? [y] [n] ";
+		cin >> answer;
+		if (answer == 'y' || answer == 'Y') {
+
+			for (User & u : users) {
+				if (u.username == userName)
+				{
+					u.markForDelete = true;
+					SaveUpdatedUsersToFile(users);
+					users = LoadUsersFromFile(FILENAMEUSERS);
+					break;
+				}
+			}
+
+		}
+		else {
+			cout << "\nUser not deleted\n";
+
+		}
+
+	}
+	else {
+		cout << "\n User not found \n";
+
+	}
+
+	cout << "press any key to return to manage users menu...";
+	system("pause>Nul");
+
+
+}
+
+void PrintUserCard(const User &user) {
+	cout << "---------------------------------------\n";
+	cout << left << setw(15) << "Name              " << " : " << user.username << endl
+		<< setw(15) << "password          " << " : " << user.password << endl
+		<< setw(15) << "permission granted" << " : " << user.permissionGranted << endl;
+	cout << "---------------------------------------\n";
+
+
+
+}
+void PrintUser(const User &user) {
+
+	cout << left << setw(15) << user.username << setw(2) << "|" << setw(10) << user.password << setw(2) << "|"
+		<< setw(20) << user.permissionGranted << setw(2) << "|";
+
+} //---------------------------------------
+void ShowAllUsers(const vector<User> &users) {
+
+	cout << "				list of (" << users.size() << ") clients\n";
+	cout << "----------------------------------------------------\n";
+	cout << left << setw(15) << "Name" << setw(2) << "|" << setw(10) << "Password" << setw(2) << "|"
+		<< setw(20) << "Permission granted" << setw(2) << "|";
+	cout << "\n--------------------------------------------------\n";
+
+	for (User user : users) {
+
+		PrintUser(user);
+		cout << endl;
+
+
+	}
+	cout << "---------------------------------------------------------------------------------------\n";
+
+	cout << "press any key to go back to manage users menu screen...";
+	system("pause>nul");
+
+
+}
+
+
+void PerformManageUserOptions(ManageUsersMenu choice,vector<User>& users) {
+
+	system("cls");
+
+	switch (choice) {
+
+	case ManageUsersMenu::eListUsers :
+			ShowAllUsers(users);
+			break;
+	case ManageUsersMenu::eAddUser :
+		AddUsers(users);
+		break;
+	case ManageUsersMenu::eDeleteUser:
+		DeleteUser(users);
+		break;
+	case ManageUsersMenu::eUpdateUser:
+		UpdateUser(users);
+		break;
+	case ManageUsersMenu::eFindUser:
+		FindAndPrintUser(users);
+		break;
+	case ManageUsersMenu::eMainMenu:
+		return;
+		
+
+	}
+
+
+}
+
+void GoToManageUsersMenu(vector<User>& users) {
+
+	 
+
+	ManageUsersMenu choice;
+	do {
+		system("cls");
+		ShowManageUsersMenu();
+
+		 choice= (ManageUsersMenu)MyLib::ReadNumberInRange("choose what service you want ? 1-6 ", 1, 6);
+		 
+		 PerformManageUserOptions(choice,users);
+
+	} while (choice != ManageUsersMenu::eMainMenu);
+
+	
+
+}
+void ShowAccessDenied() {
+	system("cls");
+	cout << "Acess denied , you dont have the permission to access this ! \n";
+	system("pause>nul");
+}
+
+bool CheckHasPermission( const User& user, PermissionOptions permission) {
+
+	if (user.permissionGranted == PermissionOptions::eAllPermissions)
+		return true;
+
+	if (user.permissionGranted & permission)
+		return true;
+
+	ShowAccessDenied();
+	return false;
+}
+
+void PerformMainMenuOption(MenuChoice menuChoice ,vector<Client> &clients,vector<User> &users,User &user) {
 
 	switch (menuChoice) {
+
 	case MenuChoice::eShowAllClient:
-		ShowAllClients(clients);
+		if (CheckHasPermission(user,PermissionOptions::eToShowAllClient))
+			ShowAllClients(clients);
 		break;
+
 	case MenuChoice::eAddClient:
+		if (CheckHasPermission(user,PermissionOptions::eToAddClient))
 		AddClients(clients);
 		break;
+
 	case MenuChoice::eDeleteClient:
-		DeleteClient(clients);
+		if (CheckHasPermission(user,PermissionOptions::eToDeleteClient))
+		DeleteClient(clients); 
 		break;
 	case MenuChoice::eUpdateClient:
+		if (CheckHasPermission(user, PermissionOptions::eToUpdateClient))
 		UpdateClient(clients);
 		break;
 	case MenuChoice::eFindClient:
+		if (CheckHasPermission(user, PermissionOptions::eToFindClient))
 		FindAndPrintClient(clients);
 		break;
 	case MenuChoice::eTransactions:
+		if (CheckHasPermission(user, PermissionOptions::eToTransactions))
 		GoToTransactionsMenu(clients);
 		break;
-	case MenuChoice::eExit:
+	case MenuChoice::eManageUsers:
+		if (CheckHasPermission(user, PermissionOptions::eToManageUsers))
+		GoToManageUsersMenu(users);
+		break;
+
+	case MenuChoice::eLogout:
 		system("cls");
-		cout << "\nprogram ended\n";
 		break;
 
 
@@ -608,36 +1112,83 @@ void PerformMainMenuOption(MenuChoice menuChoice ,vector<Client> &clients) {
 
 }
 
+User Login(const vector<User> & users) {
+	
+	string username;
+	string password;
+	bool loginSuccess = true;
+	User user;
+	do {
+		
+
+		cout << "==========================================\n";
+		cout << "		login";
+		cout << "\n==========================================\n";
+
+		if (loginSuccess == false) {
+			cout << "wrong password or username ! try again \n";
+			
+		}
+		username = MyLib::ReadString("enter username : ");
+		password = MyLib::ReadString("enter password : ");
+
+		loginSuccess = false;
+		
+		system("cls");
+
+	} while (!FindUser(users, username, user) || !(user.password == password));
+
+	
+	
+	return user;
+}
+
 
 void StartBank() {
+
+	vector<User> users = LoadUsersFromFile(FILENAMEUSERS);
+	User user;
+
+	user = Login(users);
 	
 
 	
-	MenuChoice menuChoice;
-	vector<Client> clients = LoadClientsFromFile(FILENAME);
+	MenuChoice menuChoice=MenuChoice::eShowAllClient; //any value so the if condition below works 
+	vector<Client> clients = LoadClientsFromFile(FILENAMECLIENTS);
 	
 	do {
+
+		if(menuChoice == MenuChoice::eLogout)
+			user = Login(users);
+
 		system("cls");
 		ShowMainMenu();
 
-		menuChoice = (MenuChoice)MyLib::ReadNumberInRange("choose what service you want ? 1-7", 1, 7);
+		menuChoice = (MenuChoice)MyLib::ReadNumberInRange("choose what service you want ? 1-7", 1, 8);
 		system("cls");
 
-		PerformMainMenuOption(menuChoice, clients);
+		PerformMainMenuOption(menuChoice, clients,users,user);
 
 		
 
-	} while (menuChoice != MenuChoice::eExit);
+	} while (true);
 	
 
 
 }
 
+//notes
+// i dont like that i called login function 2 times and printed the login screen 2 times   edit:(i fixed it for printing
+// the login using do while instead but idk for login function )
+// 
+//also dont like that i have to call access denied after every option , was there a better implementation 
+
 
 int main() {
 
 	StartBank();
-
+	
+	
 	return 0;
 
 
