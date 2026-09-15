@@ -1177,12 +1177,6 @@ void StartBank() {
 
 }
 
-//notes
-// i dont like that i called login function 2 times and printed the login screen 2 times   edit:(i fixed it for printing
-// the login using do while instead but idk for login function )
-// 
-//also dont like that i have to call access denied after every option , was there a better implementation 
-
 
 int main() {
 
