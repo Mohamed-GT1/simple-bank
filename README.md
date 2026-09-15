@@ -219,24 +219,6 @@ The available operations depend on the permissions assigned to the logged-in use
 
 ---
 
-## Technologies & Concepts
-
-- **C++**
-- Standard Library
-- `struct`
-- Functions
-- `enum`
-- `vector`
-- File input/output
-- String manipulation
-- Input validation
-- Bitwise operators
-- Pass-by-reference
-- Command-line interfaces
-- Data persistence using text files
-
----
-
 ## How It Works
 
 The general application flow is:
